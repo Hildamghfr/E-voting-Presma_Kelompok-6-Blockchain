@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal E-Voting ITPLN</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #0B101E;
+            --bg-gradient-2: #1C2541;
+            --gold-primary: #D4AF37;
+            --accent-blue: #3A7BD5;
+            --card-glass: rgba(255, 255, 255, 0.03);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-muted: #A0AEC0;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--bg-base), var(--bg-gradient-2));
+            color: #fff;
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            background-attachment: fixed;
+        }
+
+        /* Dekorasi Glow Ganda - Sinkron dengan login.html & login.admin.html */
+        .glow { 
+            position: fixed; 
+            border-radius: 50%;
+            filter: blur(120px); 
+            opacity: 0.15; 
+            z-index: -1; 
+        }
+        .glow-1 { width: 400px; height: 400px; background: var(--gold-primary); top: -100px; left: -100px; }
+        .glow-2 { width: 350px; height: 350px; background: var(--accent-blue); bottom: -50px; right: -50px; }
+
+        .container {
+            text-align: center;
+            background: var(--card-glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            padding: 60px 50px;
+            border-radius: 30px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+            max-width: 550px;
+            width: 90%;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .logo-portal {
+            height: 80px;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.2));
+        }
+
+        h1 { 
+            font-size: 2.4rem; 
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: #fff; 
+            margin-bottom: 10px; 
+            text-transform: uppercase;
+        }
+        
+        h1 span {
+            color: var(--gold-primary);
+            text-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+        }
+
+        p { 
+            color: var(--text-muted); 
+            margin-bottom: 45px; 
+            font-size: 0.95rem; 
+            line-height: 1.6;
+        }
+
+        .btn-wrapper { 
+            display: flex; 
+            gap: 25px; 
+            justify-content: center; 
+        }
+        
+        .btn-gate {
+            padding: 16px 0;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            color: #fff;
+            border-radius: 14px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            letter-spacing: 0.5px;
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            width: 180px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-gate .icon {
+            font-size: 1.6rem;
+            transition: transform 0.3s ease;
+        }
+
+        /* Hover states per role */
+        .btn-mahasiswa:hover {
+            border-color: var(--accent-blue);
+            background: rgba(58, 123, 213, 0.1);
+            color: #60a5fa;
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(58, 123, 213, 0.15);
+        }
+
+        .btn-admin:hover {
+            border-color: var(--gold-primary);
+            background: rgba(212, 175, 55, 0.1);
+            color: var(--gold-primary);
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(212, 175, 55, 0.15);
+        }
+
+        .btn-gate:hover .icon {
+            transform: scale(1.15);
+        }
+
+        /* Animasi Masuk Halaman */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        footer {
+            position: absolute;
+            bottom: 25px;
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.2);
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="glow glow-1"></div>
+    <div class="glow glow-2"></div>
+
+    <div class="container">
+        <img src="logo.png" alt="Logo ITPLN" class="logo-portal" onerror="this.style.display='none'">
+        <h1>Selamat <span>Datang</span></h1>
+        <p>Sistem Pemilihan Presiden Mahasiswa<br>Institut Teknologi PLN</p>
+        <div class="btn-wrapper">
+            <a href="login.html" class="btn-gate btn-mahasiswa">
+                <span class="icon">🗳️</span>
+                <span>MAHASISWA</span>
+            </a>
+            <a href="login.admin.html" class="btn-gate btn-admin">
+                <span class="icon">⚙️</span>
+                <span>ADMIN</span>
+            </a>
+        </div>
+    </div>
+
+    <footer>
+        © 2026 HIMASI ITPLN - Blockchain Infrastructure Hub
+    </footer>
+</body>
+</html>

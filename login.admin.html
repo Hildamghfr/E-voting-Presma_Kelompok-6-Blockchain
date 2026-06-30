@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Admin Panel - E-Voting ITPLN</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #0B101E;
+            --bg-surface: #151C2C;
+            --bg-glass: rgba(21, 28, 44, 0.6);
+            --gold-primary: #D4AF37;
+            --gold-hover: #F3C33D;
+            --accent-blue: #3A7BD5;
+            --text-main: #F8F9FA;
+            --text-dim: #A0AEC0;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --danger: #FF4757;
+            --danger-hover: #ff2a3f;
+            --success: #2ECC71;
+            --warning: #f39c12;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg-base); color: var(--text-main); min-height: 100vh; overflow-x: hidden; }
+        
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-base); }
+        ::-webkit-scrollbar-thumb { background: #2d3748; border-radius: 4px; }
+
+        /* ================= LOGIN ================= */
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle at center, var(--bg-surface), var(--bg-base)); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+        .login-box { background: var(--bg-glass); backdrop-filter: blur(20px); border: 1px solid var(--border-color); border-radius: 20px; padding: 40px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
+        .login-box h2 { font-family: 'Poppins', sans-serif; color: var(--gold-primary); margin-bottom: 25px; letter-spacing: 1px; }
+        .input-group { text-align: left; margin-bottom: 20px; }
+        .input-group label { display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 8px; text-transform: uppercase; }
+        .input-group input { width: 100%; padding: 14px; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 10px; color: #fff; outline: none; transition: 0.3s; }
+        .input-group input:focus { border-color: var(--gold-primary); box-shadow: 0 0 10px rgba(212,175,55,0.2); }
+        .btn-submit { width: 100%; padding: 14px; background: var(--gold-primary); color: #000; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+        .btn-submit:hover { background: var(--gold-hover); transform: translateY(-2px); }
+
+        /* ================= LAYOUT ================= */
+        #admin-app { display: none; display: flex; height: 100vh; }
+
+        /* SIDEBAR */
+        .sidebar { width: 260px; background: var(--bg-surface); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; padding: 20px 0; }
+        .brand { display: flex; align-items: center; gap: 15px; padding: 0 25px 30px; border-bottom: 1px solid var(--border-color); }
+        .brand img { height: 40px; }
+        .brand-text h3 { font-family: 'Poppins', sans-serif; font-size: 1rem; }
+        .brand-text p { font-size: 0.7rem; color: var(--gold-primary); }
+        
+        .nav-menu { flex-grow: 1; padding: 20px 15px; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: var(--text-dim); text-decoration: none; border-radius: 10px; margin-bottom: 8px; transition: 0.3s; cursor: pointer; font-size: 0.9rem; font-weight: 500; }
+        .nav-item:hover, .nav-item.active { background: rgba(212,175,55,0.1); color: var(--gold-primary); border-left: 4px solid var(--gold-primary); }
+        .sidebar-footer { padding: 20px 25px; border-top: 1px solid var(--border-color); }
+        .btn-logout { width: 100%; padding: 10px; border: 1px solid var(--danger); background: transparent; color: var(--danger); border-radius: 8px; cursor: pointer; transition: 0.3s; }
+        .btn-logout:hover { background: var(--danger); color: #fff; }
+
+        /* CONTENT AREA */
+        .main-content { flex-grow: 1; overflow-y: auto; padding: 30px 40px; }
+        .top-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .top-header h1 { font-family: 'Poppins', sans-serif; font-size: 1.6rem; }
+        
+        .view-section { display: none; animation: fadeIn 0.4s ease; }
+        .view-section.active { display: block; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* KOMPONEN UMUM */
+        .panel { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 16px; padding: 25px; margin-bottom: 25px; }
+        .panel-header { margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; font-family: 'Poppins', sans-serif; font-size: 1.1rem; }
+        
+        .ledger-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .ledger-table th { padding: 15px; font-size: 0.8rem; color: var(--text-dim); border-bottom: 2px solid var(--border-color); text-transform: uppercase;}
+        .ledger-table td { padding: 16px 15px; font-size: 0.9rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .ledger-table tr:hover { background: rgba(255, 255, 255, 0.02); }
+
+        .search-box { padding: 10px 18px; border-radius: 10px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.3); color: white; outline: none; min-width: 250px; transition: 0.3s; }
+        .search-box:focus { border-color: var(--accent-blue); box-shadow: 0 0 10px rgba(58, 123, 213, 0.2); }
+        .badge-kandidat { padding: 6px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+        .badge-roky { background: rgba(58, 123, 213, 0.15); color: #60a5fa; border: 1px solid rgba(58, 123, 213, 0.3); }
+        .badge-silfester { background: rgba(212, 175, 55, 0.15); color: var(--gold-primary); border: 1px solid rgba(212, 175, 55, 0.3); }
+
+        /* KHUSUS DASHBOARD */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 16px; padding: 20px; }
+        .stat-val { font-size: 1.8rem; font-weight: 700; font-family: 'Poppins', sans-serif; margin: 10px 0 5px; }
+        .btn-reveal { background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(212, 175, 55, 0.05)); border: 1px solid var(--gold-primary); color: var(--gold-primary); padding: 12px 25px; border-radius: 12px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: 0.3s; display: inline-flex; align-items: center; gap: 10px; font-family: 'Poppins', sans-serif; margin-bottom: 20px; }
+        .btn-reveal:hover { background: var(--gold-primary); color: #000; box-shadow: 0 10px 20px rgba(212, 175, 55, 0.2); transform: translateY(-2px); }
+
+        /* KHUSUS DPT */
+        .btn-action { padding: 8px 15px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; font-size: 0.8rem; margin-right: 5px; transition: 0.2s;}
+        .btn-approve { background: rgba(46, 204, 113, 0.2); color: var(--success); border: 1px solid var(--success); }
+        .btn-approve:hover { background: var(--success); color: #000; }
+        .btn-reject { background: rgba(255, 71, 87, 0.2); color: var(--danger); border: 1px solid var(--danger); }
+        .btn-reject:hover { background: var(--danger); color: #fff; }
+
+        /* KHUSUS BLOCKCHAIN */
+        .terminal-box { background: #000; border-radius: 8px; padding: 20px; font-family: monospace; color: #00ff00; height: 350px; overflow-y: auto; font-size: 0.85rem; border: 1px solid #333; line-height: 1.5; }
+        .terminal-line { margin-bottom: 6px; }
+
+        /* KHUSUS EKSPOR */
+        .export-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-top: 10px; }
+        .export-card { background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 16px; padding: 30px 25px; display: flex; flex-direction: column; align-items: center; text-align: center; transition: 0.3s; }
+        .export-card:hover { border-color: var(--gold-primary); transform: translateY(-5px); background: rgba(0,0,0,0.4); box-shadow: 0 15px 30px rgba(0,0,0,0.3); }
+        .export-icon { width: 70px; height: 70px; border-radius: 18px; display: flex; justify-content: center; align-items: center; font-size: 2rem; margin-bottom: 20px; }
+        .export-info h4 { font-family: 'Poppins', sans-serif; font-size: 1.15rem; margin-bottom: 12px; color: #fff; }
+        .export-info p { font-size: 0.85rem; color: var(--text-dim); line-height: 1.6; margin-bottom: 30px; flex-grow: 1; }
+        .btn-export-action { width: 100%; padding: 14px; background: transparent; border: 1px solid var(--gold-primary); color: var(--gold-primary); border-radius: 10px; font-weight: 600; cursor: pointer; transition: 0.3s; font-family: 'Poppins', sans-serif; }
+        .btn-export-action:hover:not(:disabled) { background: var(--gold-primary); color: #000; }
+
+        /* KHUSUS PENGATURAN DARURAT */
+        .danger-panel { border: 2px dashed var(--danger); background: rgba(255, 71, 87, 0.03); position: relative; overflow: hidden; }
+        .danger-header { color: var(--danger); font-family: 'Poppins', sans-serif; font-size: 1.2rem; margin-bottom: 10px; }
+        .danger-desc { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 30px; line-height: 1.5; }
+        .action-card { background: rgba(0,0,0,0.4); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .action-info h4 { font-size: 1.05rem; margin-bottom: 5px; font-family: 'Poppins', sans-serif; }
+        .action-info p { font-size: 0.8rem; color: var(--text-dim); max-width: 500px; }
+        .btn-action-lg { padding: 12px 25px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; font-size: 0.9rem; transition: 0.3s; min-width: 160px; }
+        .btn-warning { background: rgba(243, 156, 18, 0.15); color: var(--warning); border: 1px solid var(--warning); }
+        .btn-warning:hover { background: var(--warning); color: #fff; }
+        .btn-danger { background: rgba(255, 71, 87, 0.15); color: var(--danger); border: 1px solid var(--danger); }
+        .btn-danger:hover { background: var(--danger); color: #fff; }
+        .btn-critical { background: var(--danger); color: #fff; box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3); }
+        .btn-critical:hover { background: var(--danger-hover); transform: scale(1.02); }
+    </style>
+</head>
+<body>
+
+    <div id="login-overlay">
+        <div class="login-box">
+            <img src="logo.png" alt="Logo" style="height: 70px; margin-bottom: 20px;" onerror="this.style.display='none'">
+            <h2>ADMIN PORTAL</h2>
+            <form id="admin-login-form">
+                <div class="input-group">
+                    <label>KPU Administrator ID</label>
+                    <input type="text" placeholder="Masukkan ID" required>
+                </div>
+                <div class="input-group">
+                    <label>Master Password</label>
+                    <input type="password" placeholder="••••••••••••" required>
+                </div>
+                <button type="submit" class="btn-submit">OTENTIKASI MASUK & HUBUNGKAN METAMASK</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="admin-app">
+        
+        <aside class="sidebar">
+            <div class="brand">
+                <img src="logo.png" alt="Logo" onerror="this.style.display='none'">
+                <div class="brand-text">
+                    <h3>E-VOTING HUB</h3>
+                    <p>Panitia Pusat PresMa</p>
+                </div>
+            </div>
+            
+            <nav class="nav-menu">
+                <div class="nav-item active" onclick="switchTab('view-dashboard', 'Live Audit Dashboard', this)">📊 Dashboard Utama</div>
+                <div class="nav-item" onclick="switchTab('view-dpt', 'Manajemen Pemilih (DPT)', this)">👥 Manajemen DPT</div>
+                <div class="nav-item" onclick="switchTab('view-blockchain', 'Node & Status Blockchain', this)">🔗 Status Blockchain</div>
+                <div class="nav-item" onclick="switchTab('view-ekspor', 'Ekspor Laporan Data', this)">📥 Ekspor Laporan</div>
+                <div class="nav-item" onclick="switchTab('view-pengaturan', 'Pengaturan Darurat Sistem', this)" style="color: var(--danger);">⚙️ Pengaturan Darurat</div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="btn-logout" onclick="location.reload()">🔒 Logout Sesi</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="top-header">
+                <div>
+                    <h1 id="page-title">Live Audit Dashboard</h1>
+                    <p style="color: var(--text-dim); font-size: 0.9rem;" id="current-time">Memuat waktu sistem...</p>
+                </div>
+                <div style="background: rgba(46, 204, 113, 0.1); border: 1px solid var(--success); color: var(--success); padding: 6px 15px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">
+                    ● Testnet Sepolia Connected
+                </div>
+            </div>
+
+            <div id="view-dashboard" class="view-section active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div style="color: var(--gold-primary);">🗳️ Total Suara (On-Chain)</div>
+                        <div class="stat-val" id="total-suara-box">0</div>
+                        <div style="font-size: 0.8rem; color: var(--text-dim);">Tervalidasi di Smart Contract</div>
+                    </div>
+                    <div class="stat-card">
+                        <div style="color: var(--accent-blue);">👥 Status Pemilu Kampus</div>
+                        <div class="stat-val" id="status-pemilu-box" style="font-size: 1.4rem; color: var(--warning);">Memuat...</div>
+                        <div style="font-size: 0.8rem; color: var(--text-dim);">Siklus State Kontrak</div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">Perolehan Suara Sementara</div>
+                    <div style="display: flex; gap: 20px; margin-bottom: 20px; align-items: center;">
+                        <img src="roky.jpeg" alt="Roky" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent-blue);" onerror="this.src='https://via.placeholder.com/50'">
+                        <div style="flex-grow: 1;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>01. Roky</span> <span id="suara-p1">0 Suara (0%)</span></div>
+                            <div style="height: 8px; background: rgba(255,255,255,0.1); border-radius: 5px;"><div id="progress-p1" style="width: 0%; height: 100%; background: var(--accent-blue); border-radius: 5px;"></div></div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 20px; align-items: center;">
+                        <img src="silfester.webp" alt="Silfester" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 2px solid var(--gold-primary);" onerror="this.src='https://via.placeholder.com/50'">
+                        <div style="flex-grow: 1;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>02. Silfester</span> <span id="suara-p2">0 Suara (0%)</span></div>
+                            <div style="height: 8px; background: rgba(255,255,255,0.1); border-radius: 5px;"><div id="progress-p2" style="width: 0%; height: 100%; background: var(--gold-primary); border-radius: 5px;"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 10px;">
+                    <button class="btn-reveal" onclick="toggleLedger()">
+                        <span id="ledger-icon">🔍</span> <span id="ledger-text">Tampilkan Transparansi Detail Suara</span>
+                    </button>
+                </div>
+
+                <div id="ledger-section" class="panel" style="display: none; margin-top: 15px; animation: fadeIn 0.4s ease;">
+                    <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Data Pemilih & Hasil Validasi On-Chain</span>
+                        <input type="text" id="ledger-search" class="search-box" placeholder="Cari berdasarkan Hash Transaksi..." onkeyup="filterLedger()">
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table class="ledger-table">
+                            <thead>
+                                <tr>
+                                    <th>No Urut</th>
+                                    <th>Hash Bukti Transaksi (On-Chain Cryptographic Proof)</th>
+                                    <th>Pilihan Paslon ID</th>
+                                    <th>Waktu Sinkronisasi Blok</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ledger-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-dpt" class="view-section">
+                <div class="panel">
+                    <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Verifikasi Identitas Mahasiswa (Off-Chain ke Whitelist On-Chain)</span>
+                        <span id="badge-antrean-count" style="font-size: 0.8rem; background: rgba(243, 156, 18, 0.2); color: var(--warning); padding: 5px 15px; border-radius: 20px;">0 Menunggu Validasi</span>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 20px;">Mahasiswa yang disetujui (Approve) akan di-hash data NIM-nya lalu didaftarkan secara permanen ke dalam Whitelist Kontrak untuk menjamin privasi data asli di blockchain publik.</p>
+                    
+                    <div style="overflow-x: auto;">
+                        <table class="ledger-table">
+                            <thead>
+                                <tr>
+                                    <th>NIM</th>
+                                    <th>Nama Mahasiswa</th>
+                                    <th>Dokumen KTM</th>
+                                    <th>Waktu Pengajuan</th>
+                                    <th>Aksi Validasi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dpt-tbody">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-blockchain" class="view-section">
+                <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px;">
+                    <div class="panel">
+                        <div class="panel-header">Informasi Jaringan</div>
+                        <div style="margin-bottom: 20px;">
+                            <span style="display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 5px;">Active Network</span>
+                            <span style="background: rgba(46, 204, 113, 0.1); color: var(--success); padding: 5px 10px; border-radius: 5px; font-size: 0.85rem;">Ethereum Sepolia (Testnet)</span>
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <span style="display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 5px;">Smart Contract Address</span>
+                            <span style="color: var(--gold-primary); font-family: monospace; font-size: 0.95rem; background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 5px;">0x6c12400E9BcF0F80f1a9fc8174D88c21Db5F316A</span>
+                        </div>
+                        <div>
+                            <span style="display: block; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 5px;">Current Block Height</span>
+                            <strong id="live-block-height" style="font-size: 1.5rem; font-family: monospace;">Menunggu Node...</strong>
+                        </div>
+                    </div>
+                    
+                    <div class="panel">
+                        <div class="panel-header">Live Terminal Node Log</div>
+                        <div class="terminal-box" id="terminal-box">
+                            <div class="terminal-line" style="color: #60a5fa;">[SYSTEM] Initializing Web3 Provider...</div>
+                            <div class="terminal-line" style="color: var(--warning);">[SYSTEM] Waiting for Admin Login to connect to RPC Node.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-ekspor" class="view-section">
+                <div class="panel">
+                    <div class="panel-header">Pusat Unduhan Rekapitulasi & Audit</div>
+                    <p style="font-size: 0.95rem; color: var(--text-dim); margin-bottom: 30px; max-width: 800px; line-height: 1.6;">
+                        Sistem e-voting berbasis blockchain menjamin transparansi absolut. Ekstrak data *On-Chain* langsung ke dalam berbagai format untuk keperluan validasi KPU, pelaporan ke Rektorat ITPLN, dan arsip digital.
+                    </p>
+
+                    <div class="export-grid">
+                        <div class="export-card">
+                            <div class="export-icon" style="background: rgba(255, 71, 87, 0.15); color: var(--danger);">📄</div>
+                            <div class="export-info">
+                                <h4>Berita Acara (PDF)</h4>
+                                <p>Dokumen resmi rekapitulasi hasil akhir pemilu siap dicetak dan ditandatangani.</p>
+                            </div>
+                            <button class="btn-export-action" onclick="exportLaporanReal(this, 'PDF')">⬇ Unduh PDF</button>
+                        </div>
+                        <div class="export-card">
+                            <div class="export-icon" style="background: rgba(46, 204, 113, 0.15); color: var(--success);">📊</div>
+                            <div class="export-info">
+                                <h4>Audit Ledger (EXCEL)</h4>
+                                <p>Data mentah transaksional mencakup NIM pemilih dan Pilihan Paslon untuk Excel.</p>
+                            </div>
+                            <button class="btn-export-action" onclick="exportLaporanReal(this, 'EXCEL')">⬇ Unduh EXCEL</button>
+                        </div>
+                        <div class="export-card">
+                            <div class="export-icon" style="background: rgba(212, 175, 55, 0.15); color: var(--gold-primary);">💻</div>
+                            <div class="export-info">
+                                <h4>Raw Contract (JSON)</h4>
+                                <p>Ekstraksi murni struktur data *state* dari *Smart Contract* untuk auditor IT.</p>
+                            </div>
+                            <button class="btn-export-action" onclick="exportLaporanReal(this, 'JSON')">⬇ Unduh JSON</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">Riwayat Ekspor Terakhir</div>
+                    <div style="overflow-x: auto;">
+                        <table class="ledger-table">
+                            <thead>
+                                <tr>
+                                    <th>Waktu Operasi</th>
+                                    <th>Format</th>
+                                    <th>Nama File</th>
+                                    <th>Otorisator</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="export-history-tbody">
+                                <tr>
+                                    <td style="color: var(--text-dim);">Hari ini, 08:30 WIB</td>
+                                    <td><span class="badge-kandidat" style="background: rgba(212, 175, 55, 0.15); color: var(--gold-primary);">EXCEL</span></td>
+                                    <td style="font-family: monospace;">Audit_Ledger_Tx_08.xlsx</td>
+                                    <td>KPU_Pusat_Admin</td>
+                                    <td style="color: var(--success); font-weight: 600;">✔ Berhasil</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-pengaturan" class="view-section">
+                <div style="background: rgba(243, 156, 18, 0.1); border-left: 4px solid var(--warning); padding: 15px; border-radius: 4px; margin-bottom: 25px; font-size: 0.85rem;">
+                    <strong>PENTING:</strong> Otorisasi ini terhubung langsung dengan fungsi *administrative modifier* (`hanyaKPU`) pada Smart Contract Ethereum. Setiap tindakan akan memakan biaya *Gas Fee* dan bersifat permanen.
+                </div>
+
+                <div class="panel danger-panel">
+                    <div class="danger-header">⚠️ Zona Berbahaya (Danger Zone - State Lifecycle Control)</div>
+                    <p class="danger-desc">Gunakan opsi di bawah ini jika terjadi gangguan *Force Majeure*, indikasi serangan DDoS, atau jika panitia ingin mengontrol jalannya pemilu mahasiswa.</p>
+
+                    <div class="action-card">
+                        <div>
+                            <h4 style="color: var(--success); margin-bottom: 5px;">Mulai Pemilu (Activate Lifecycle)</h4>
+                            <p style="font-size: 0.8rem; color: var(--text-dim); max-width: 500px;">Mengubah status kontrak menjadi 'Berjalan'. Dibutuhkan agar mahasiswa dapat mulai memasukkan suara.</p>
+                        </div>
+                        <button class="btn-action-lg" style="background: rgba(46,204,113,0.15); color: var(--success); border: 1px solid var(--success);" onclick="emergencyAction('MULAI', 'mulaiPemilu')">▶ Mulai Pemilu</button>
+                    </div>
+
+                    <div class="action-card">
+                        <div>
+                            <h4 style="color: var(--warning); margin-bottom: 5px;">Jeda Darurat (Pause Smart Contract)</h4>
+                            <p style="font-size: 0.8rem; color: var(--text-dim); max-width: 500px;">Fungsi pemungutan suara akan dibekukan sementara. Seluruh transaksi voting masuk akan otomatis di-revert.</p>
+                        </div>
+                        <button class="btn-action-lg btn-warning" onclick="emergencyAction('JEDA', 'berhentikanPemilu')">⏸ Pause Sistem</button>
+                    </div>
+
+                    <div class="action-card">
+                        <div>
+                            <h4 style="color: #60a5fa; margin-bottom: 5px;">Lanjutkan Pemilu (Resume Contract)</h4>
+                            <p style="font-size: 0.8rem; color: var(--text-dim); max-width: 500px;">Mengaktifkan kembali sistem pemungutan suara setelah status dijeda darurat.</p>
+                        </div>
+                        <button class="btn-action-lg" style="background: rgba(96,165,250,0.15); color: #60a5fa; border: 1px solid #60a5fa;" onclick="emergencyAction('LANJUT', 'lanjutkanPemilu')">⏯ Resume Sistem</button>
+                    </div>
+
+                    <div class="action-card">
+                        <div>
+                            <h4 style="color: var(--danger); margin-bottom: 5px;">Reset Sesi Kontrak (Clear All Votes Data)</h4>
+                            <p style="font-size: 0.8rem; color: var(--text-dim); max-width: 500px;">Mengembalikan suara seluruh kandidat ke angka 0 dan menghapus riwayat audit on-chain.</p>
+                        </div>
+                        <button class="btn-action-lg btn-danger" onclick="emergencyAction('RESET', 'mengulangPemilu')">🔄 Reset Pemilu</button>
+                    </div>
+
+                    <div style="background: rgba(255, 71, 87, 0.05); border: 1px solid rgba(255, 71, 87, 0.4); border-radius: 12px; padding: 20px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h4 style="color: #fff; margin-bottom: 5px;">Akhiri Pemilu Permanen (Force End / Seal Result)</h4>
+                            <p style="font-size: 0.8rem; color: rgba(255,255,255,0.7); max-width: 500px;">Menutup akses *smart contract* selamanya. Hasil suara saat ini akan dikunci mutlak (*immutable*).</p>
+                        </div>
+                        <button class="btn-action-lg btn-critical" onclick="emergencyAction('AKHIRI', 'sudahiPemilu')">🛑 Segel Hasil Pemilu</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const contractAddress = "0x6c12400E9BcF0F80f1a9fc8174D88c21Db5F316A";
+        
+        const contractABI = [
+	{
+		"inputs": [],
+		"name": "berhentikanPemilu",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "_hashNIM",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_idKandidat",
+				"type": "uint256"
+			}
+		],
+		"name": "berikanSuara",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "lanjutkanPemilu",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "mengulangPemilu",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "mulaiPemilu",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "bytes32",
+				"name": "hashNIM",
+				"type": "bytes32"
+			}
+		],
+		"name": "PemilihDiverifikasi",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "enum PemiluPresMa.StatusPemilu",
+				"name": "statusBaru",
+				"type": "uint8"
+			}
+		],
+		"name": "StatusBerubah",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "bytes32",
+				"name": "hashTransaksi",
+				"type": "bytes32"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "idKandidat",
+				"type": "uint256"
+			}
+		],
+		"name": "SuaraMasuk",
+		"type": "event"
+	},
+	{
+		"inputs": [],
+		"name": "sudahiPemilu",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "_nama",
+				"type": "string"
+			}
+		],
+		"name": "tambahKandidat",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "_hashNIM",
+				"type": "bytes32"
+			}
+		],
+		"name": "verifikasiPemilih",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "daftarKandidat",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "id",
+				"type": "uint256"
+			},
+			{
+				"internalType": "string",
+				"name": "nama",
+				"type": "string"
+			},
+			{
+				"internalType": "uint256",
+				"name": "jumlahSuara",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "dapatkanTotalRiwayat",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "ketuaKPU",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "",
+				"type": "bytes32"
+			}
+		],
+		"name": "nimSudahMemilih",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bytes32",
+				"name": "",
+				"type": "bytes32"
+			}
+		],
+		"name": "nimTerverifikasi",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "riwayatPemilu",
+		"outputs": [
+			{
+				"internalType": "bytes32",
+				"name": "hashTransaksi",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "uint256",
+				"name": "idKandidat",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "timestamp",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "statusSaatIni",
+		"outputs": [
+			{
+				"internalType": "enum PemiluPresMa.StatusPemilu",
+				"name": "",
+				"type": "uint8"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "totalKandidat",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "walletSudahMemilih",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	}
+]
+
+        let provider, signer, contract;
+        let cachedRiwayat = []; 
+
+        const statusArray = ["Belum Mulai", "Berjalan 🟢", "Diberhentikan Sementara ⏸", "Selesai/Disegel 🛑"];
+
+        document.getElementById('admin-login-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (window.ethereum) {
+                try {
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    provider = new ethers.BrowserProvider(window.ethereum);
+                    signer = await provider.getSigner();
+                    contract = new ethers.Contract(contractAddress, contractABI, signer);
+                    
+                    document.getElementById('login-overlay').style.display = 'none';
+                    document.getElementById('admin-app').style.display = 'flex';
+
+                    writeLog(`[SYSTEM] Terhubung dengan Sepolia RPC Node. Dompet admin terotentikasi.`, "var(--success)");
+
+                    // Sinkronisasi data awal
+                    await fetchLiveBlockchainData();
+                    muatTabelDPTRealTime(); 
+                    startBlockchainListeners();
+
+                } catch (error) {
+                    alert("Koneksi Admin Web3 Gagal: " + error.message);
+                }
+            } else {
+                alert("MetaMask diperlukan untuk membuka Admin Portal!");
+            }
+        });
+
+        // FUNGSI UTAMA RENDERING DPT REAL-TIME DARI MAHASISWA
+        function muatTabelDPTRealTime() {
+            const tbody = document.getElementById('dpt-tbody');
+            if (!tbody) return;
+
+            // Membaca antrean pendaftaran yang dikirim dari login.html mahasiswa
+            const pendingDPT = JSON.parse(localStorage.getItem('pendingDPT') || '[]');
+            
+            // Perbarui jumlah badge antrean secara dinamis
+            document.getElementById('badge-antrean-count').innerText = `${pendingDPT.length} Menunggu Validasi`;
+            
+            tbody.innerHTML = '';
+
+            if (pendingDPT.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-dim); padding: 30px;">Tidak ada pengajuan mahasiswa (Antrean Kosong).</td></tr>`;
+                return;
+            }
+
+            pendingDPT.forEach((v, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="color: var(--gold-primary); font-weight: 600;">${v.nim}</td>
+                    <td>${v.nama}</td>
+                    <td><a href="#" style="color: var(--accent-blue); text-decoration: none;">📄 ${v.ktm}</a></td>
+                    <td style="color: var(--text-dim); font-size: 0.8rem;">${v.waktu}</td>
+                    <td>
+                        <button class="btn-action btn-approve" onclick="verifyVoterAddressReal(this.closest('tr'), ${index})">Approve</button>
+                        <button class="btn-action btn-reject" onclick="rejectVoter(${index})">Reject</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // FUNGSI SINKRONISASI: Approve & Whitelist ke Blockchain Sepolia (Disederhanakan)
+        async function verifyVoterAddressReal(rowElement, index) {
+            const nimMahasiswa = rowElement.cells[0].innerText.trim();
+            const namaMahasiswa = rowElement.cells[1].innerText.trim();
+            
+            const konfirmasi = confirm(`Validasi Berkas:\nNIM: ${nimMahasiswa}\nNama: ${namaMahasiswa}\n\nLanjutkan mendaftarkan NIM ini ke Whitelist Blockchain?`);
+            
+            if(konfirmasi) {
+                try {
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    provider = new ethers.BrowserProvider(window.ethereum);
+                    signer = await provider.getSigner();
+                    contract = new ethers.Contract(contractAddress, contractABI, signer);
+                    
+                    // Ekripsi NIM menggunakan rumus Keccak256
+                    const hashNIMResult = ethers.solidityPackedKeccak256(["string"], [nimMahasiswa]);
+                    
+                    writeLog(`[PENDING] Memproses enkripsi NIM ${nimMahasiswa} -> Hash: ${hashNIMResult.substring(0,15)}...`, "var(--warning)");
+                    
+                    // Eksekusi kontrak HANYA dengan hashNIM (Sesuai kebutuhan ABI)
+                    const tx = await contract.verifikasiPemilih(hashNIMResult);
+                    alert("Transaksi Whitelist dikirim ke Ethereum Sepolia. Harap tunggu konfirmasi blok...");
+                    
+                    await tx.wait(); // Menunggu blok tervalidasi
+                    
+                    alert(`Otorisasi Sukses! NIM ${nimMahasiswa} resmi masuk DPT.`);
+                    writeLog(`[SUCCESS] Hash DPT Terdaftar: ${hashNIMResult}`, "var(--success)");
+                    
+                    // Bersihkan dari daftar antrean
+                    let pendingDPT = JSON.parse(localStorage.getItem('pendingDPT') || '[]');
+                    pendingDPT.splice(index, 1);
+                    localStorage.setItem('pendingDPT', JSON.stringify(pendingDPT));
+                    
+                    muatTabelDPTRealTime(); 
+                    
+                } catch (error) {
+                    let errMsg = error.reason || error.message;
+                    alert("Gagal memvalidasi: " + errMsg + ".\n\nPastikan dompet MetaMask yang aktif adalah milik Ketua KPU.");
+                }
+            }
+        }
+
+        // FUNGSI TOLAK BERKAS (REJECT)
+        function rejectVoter(index) {
+            if (confirm("Apakah Anda yakin ingin menolak berkas pendaftaran mahasiswa ini?")) {
+                let pendingDPT = JSON.parse(localStorage.getItem('pendingDPT') || '[]');
+                pendingDPT.splice(index, 1);
+                localStorage.setItem('pendingDPT', JSON.stringify(pendingDPT));
+                
+                muatTabelDPTRealTime();
+                writeLog(`[MANUAL] Berkas pendaftaran mahasiswa dihapus dari antrean KPU.`, "var(--danger)");
+            }
+        }
+
+        // MENGUPING PERUBAHAN INSTAN APABILA ADA INPUT BARU DARI MAHASISWA (REAL-TIME LISTENER)
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'pendingDPT') {
+                muatTabelDPTRealTime();
+                writeLog(`[SYSTEM] Terdeteksi kiriman berkas baru dari halaman pemilih. Antrean DPT diperbarui.`, "#60a5fa");
+            }
+        });
+
+        // Memuat Data Segar dari Jaringan Sepolia
+        async function fetchLiveBlockchainData() {
+            try {
+                if (!contract) return;
+
+                const stateValue = await contract.statusSaatIni();
+                document.getElementById('status-pemilu-box').innerText = statusArray[Number(stateValue)];
+
+                const totalSuara = await contract.dapatkanTotalRiwayat();
+                document.getElementById('total-suara-box').innerText = totalSuara.toString();
+
+                const totalKand = await contract.totalKandidat();
+                let akumSuara = Number(totalSuara);
+
+                if (totalKand >= 1) {
+                    const p1 = await contract.daftarKandidat(1);
+                    let pct = akumSuara > 0 ? (Number(p1.jumlahSuara) / akumSuara * 100).toFixed(1) : 0;
+                    document.getElementById('suara-p1').innerText = `${p1.jumlahSuara} Suara (${pct}%)`;
+                    document.getElementById('progress-p1').style.width = `${pct}%`;
+                }
+                if (totalKand >= 2) {
+                    const p2 = await contract.daftarKandidat(2);
+                    let pct = akumSuara > 0 ? (Number(p2.jumlahSuara) / akumSuara * 100).toFixed(1) : 0;
+                    document.getElementById('suara-p2').innerText = `${p2.jumlahSuara} Suara (${pct}%)`;
+                    document.getElementById('progress-p2').style.width = `${pct}%`;
+                }
+
+                cachedRiwayat = [];
+                for (let i = 0; i < Number(totalSuara); i++) {
+                    const item = await contract.riwayatPemilu(i);
+                    cachedRiwayat.push({
+                        no: i + 1,
+                        hash: item.hashTransaksi,
+                        idKandidat: item.idKandidat.toString(),
+                        waktu: new Date(Number(item.timestamp) * 1000).toLocaleTimeString('id-ID') + " WIB"
+                    });
+                }
+                
+                if (document.getElementById('ledger-section').style.display !== "none") {
+                    renderLedger(cachedRiwayat);
+                }
+
+            } catch (err) {
+                console.error("Gagal melakukan sinkronisasi data:", err);
+            }
+        }
+
+        // FUNGSI DARURAT & SIKLUS HIDUP (ANTI-CACHING UPGRADE)
+        async function emergencyAction(keyword, functionName) {
+            const input = prompt(`TINDAKAN SENSITIF KONTRAK!\nKetik kata kunci "${keyword}" untuk melakukan eksekusi fungsi:`);
+            if (input === keyword) {
+                try {
+                    // === BARIS PENYELAMAT: Paksa ambil akun MetaMask yang aktif detik ini ===
+                    provider = new ethers.BrowserProvider(window.ethereum);
+                    signer = await provider.getSigner();
+                    contract = new ethers.Contract(contractAddress, contractABI, signer);
+                    // ======================================================================
+
+                    writeLog(`[MANUAL] Mengirim instruksi darurat ${functionName}() ke blockchain...`, "var(--warning)");
+                    const tx = await contract[functionName]();
+                    alert("Instruksi dikirim. Menunggu pembaruan status blok...");
+                    await tx.wait();
+                    alert("Status siklus hidup kontrak berhasil diperbarui di Blockchain!");
+                    await fetchLiveBlockchainData();
+                } catch (err) {
+                    alert("Aksi darurat ditolak node: " + (err.reason || err.message));
+                }
+            } else if (input !== null) {
+                alert("Akses Ditolak: Kata kunci konfirmasi tidak sesuai.");
+            }
+        }
+
+        async function exportLaporanReal(btnElement, formatType) {
+            const originalHTML = btnElement.innerHTML;
+            btnElement.innerHTML = `⏳ Mengekstrak dari Blockchain...`;
+            btnElement.disabled = true;
+
+            try {
+                await fetchLiveBlockchainData();
+
+                if (cachedRiwayat.length === 0) {
+                    alert("Belum ada data suara masuk di blockchain untuk diekspor!");
+                    return;
+                }
+
+                if (formatType === 'JSON') {
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cachedRiwayat, null, 2));
+                    const downloadAnchor = document.createElement('a');
+                    downloadAnchor.setAttribute("href", dataStr);
+                    downloadAnchor.setAttribute("download", "Laporan_Audit_Pemilu.json");
+                    downloadAnchor.click();
+                } 
+                else if (formatType === 'EXCEL') {
+                    const worksheet = XLSX.utils.json_to_sheet(cachedRiwayat);
+                    const workbook = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(workbook, worksheet, "Ledger Audit");
+                    XLSX.writeFile(workbook, "Laporan_Audit_Ledger.xlsx");
+                } 
+                else if (formatType === 'PDF') {
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF();
+                    doc.text("LAPORAN RESMI AUDIT PEMILU PRESMA - ITPLN", 10, 10);
+                    doc.text("--------------------------------------------------", 10, 15);
+                    let yDoc = 25;
+                    cachedRiwayat.forEach((row) => {
+                        if (yDoc > 280) { doc.addPage(); yDoc = 20; }
+                        doc.text(`${row.no}. Paslon ID: ${row.idKandidat} | Proof Hash: ${row.hash.substring(0,25)}... | Jam: ${row.waktu}`, 10, yDoc);
+                        yDoc += 10;
+                    });
+                    doc.save("Laporan_Resmi_Pemilu_Sepolia.pdf");
+                }
+
+                btnElement.innerHTML = `✔ Unduhan Selesai`;
+                btnElement.style.background = "var(--success)";
+                btnElement.style.color = "#000";
+                
+                addHistoryRow(`Audit_Ledger_Real.${formatType.toLowerCase()}`, formatType);
+
+            } catch (err) {
+                alert("Gagal mengekspor data blockchain: " + err.message);
+            } finally {
+                setTimeout(() => {
+                    btnElement.innerHTML = originalHTML;
+                    btnElement.style.background = "transparent";
+                    btnElement.style.color = "var(--gold-primary)";
+                    btnElement.disabled = false;
+                }, 2500);
+            }
+        }
+
+        async function startBlockchainListeners() {
+            try {
+                const currentBlock = await provider.getBlockNumber();
+                document.getElementById('live-block-height').innerText = currentBlock.toLocaleString();
+
+                provider.on("block", (blockNumber) => {
+                    document.getElementById('live-block-height').innerText = blockNumber.toLocaleString();
+                });
+
+                contract.on("SuaraMasuk", async (hashTransaksi, idKandidat) => {
+                    writeLog(`[EVENT] Suara Masuk Terdeteksi! ID Paslon: ${idKandidat} | Hash Proof: ${hashTransaksi.substring(0,20)}...`, "var(--success)");
+                    await fetchLiveBlockchainData(); 
+                });
+
+                contract.on("StatusBerubah", async (statusBaru) => {
+                    writeLog(`[STATE CHANGED] Status Siklus Pemilu Diperbarui Menjadi: ${statusArray[Number(statusBaru)]}`, "var(--warning)");
+                    await fetchLiveBlockchainData();
+                });
+
+            } catch (error) {
+                console.log("Error pada event listener node:", error);
+            }
+        }
+
+        function writeLog(text, color = "#00ff00") {
+            const term = document.getElementById('terminal-box');
+            const p = document.createElement('div');
+            p.className = 'terminal-line';
+            p.style.color = color;
+            p.innerText = text;
+            term.appendChild(p);
+            term.scrollTop = term.scrollHeight;
+        }
+
+        function switchTab(id, title, el) {
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById('page-title').innerText = title;
+            document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            
+            if (id === 'view-dashboard' && document.getElementById('ledger-section').style.display !== "none") {
+                renderLedger(cachedRiwayat);
+            }
+            if (id === 'view-dpt') {
+                muatTabelDPTRealTime(); // Segarkan antrean saat tab dibuka
+            }
+        }
+
+        function toggleLedger() {
+            const section = document.getElementById('ledger-section');
+            const icon = document.getElementById('ledger-icon');
+            const text = document.getElementById('ledger-text');
+
+            if (section.style.display === "none") {
+                section.style.display = "block";
+                icon.innerText = "✖";
+                text.innerText = "Sembunyikan Detail Suara";
+                renderLedger(cachedRiwayat);
+            } else {
+                section.style.display = "none";
+                icon.innerText = "🔍";
+                text.innerText = "Tampilkan Transparansi Detail Suara";
+            }
+        }
+
+        function renderLedger(data) {
+            const tbody = document.getElementById('ledger-tbody');
+            tbody.innerHTML = '';
+            if(data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-dim);">Belum ada riwayat transaksi suara masuk di contract.</td></tr>`;
+                return;
+            }
+            data.forEach(v => {
+                const tr = document.createElement('tr');
+                let badgeClass = v.idKandidat === "1" ? "badge-roky" : "badge-silfester";
+                let namaPaslon = v.idKandidat === "1" ? "01. Roky" : "02. Silfester";
+                
+                tr.innerHTML = `
+                    <td>${v.no}</td>
+                    <td style="font-family: monospace; color: var(--gold-primary);">${v.hash}</td>
+                    <td><span class="badge-kandidat ${badgeClass}">${namaPaslon}</span></td>
+                    <td style="color: var(--text-dim);">${v.waktu}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterLedger() {
+            const query = document.getElementById('ledger-search').value.toLowerCase();
+            renderLedger(cachedRiwayat.filter(v => v.hash.toLowerCase().includes(query)));
+        }
+
+        function addHistoryRow(fileName, formatType) {
+            const tbody = document.getElementById('export-history-tbody');
+            const now = new Date();
+            const timeStr = "Hari ini, " + now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0') + " WIB";
+            
+            let bg = "rgba(212, 175, 55, 0.15)", col = "var(--gold-primary)";
+            if(formatType === 'PDF') { bg = "rgba(255, 71, 87, 0.15)"; col = "var(--danger)"; }
+            if(formatType === 'EXCEL') { bg = "rgba(46, 204, 113, 0.15)"; col = "var(--success)"; }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td style="color: var(--text-dim);">${timeStr}</td><td><span class="badge-kandidat" style="background: ${bg}; color: ${col};">${formatType}</span></td><td style="font-family: monospace;">${fileName}</td><td>Admin_KPU_Sesi</td><td style="color: var(--success); font-weight: 600;">✔ Berhasil</td>`;
+            tbody.insertBefore(tr, tbody.firstChild);
+        }
+
+        setInterval(() => {
+            document.getElementById('current-time').innerText = "Waktu Server: " + new Date().toLocaleString('id-ID');
+        }, 1000);
+    </script>
+</body>
+</html>

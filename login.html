@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Voting PresMa ITPLN - Premium Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-gradient-1: #0A1128;
+            --bg-gradient-2: #1C2541;
+            --card-glass: rgba(255, 255, 255, 0.03);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --accent-gold: #D4AF37;
+            --accent-hover: #F3C33D;
+            --text-light: #F8F9FA;
+            --text-muted: #A0AEC0;
+            --success-color: #2ECC71;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--bg-gradient-1), var(--bg-gradient-2));
+            color: var(--text-light);
+            min-height: 100vh;
+            background-attachment: fixed;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ================= DEKORASI BACKGROUND ================= */
+        .glow-circle {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(100px);
+            z-index: -1;
+            opacity: 0.3;
+        }
+        .circle-1 { width: 400px; height: 400px; background: #D4AF37; top: -100px; left: -100px; }
+        .circle-2 { width: 300px; height: 300px; background: #3A7BD5; bottom: -50px; right: -50px; }
+
+        /* ================= NAVBAR ================= */
+        nav {
+            padding: 20px 8%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(10, 17, 40, 0.6);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--card-border);
+            position: sticky;
+            top: 0; 
+            z-index: 100;
+            display: none; 
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .nav-brand img { height: 45px; }
+
+        .nav-title {
+            font-weight: 700;
+            font-size: 1.2rem;
+            letter-spacing: 1px;
+            color: var(--text-light);
+            line-height: 1.2;
+        }
+
+        .nav-subtitle {
+            font-size: 0.75rem;
+            color: var(--accent-gold);
+            font-weight: 400;
+        }
+
+        .user-status {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-align: right;
+        }
+
+        .wallet-badge {
+            display: inline-block;
+            margin-top: 5px;
+            padding: 4px 12px;
+            background: rgba(46, 204, 113, 0.1);
+            border: 1px solid var(--success-color);
+            color: var(--success-color);
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        /* ================= LOGIN SECTION ================= */
+        #login-section {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-grow: 1;
+            padding: 20px;
+        }
+
+        .elegant-card {
+            background: var(--card-glass);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+        }
+
+        .login-logo { width: 100px; margin-bottom: 20px; }
+        h2 { font-size: 1.6rem; margin-bottom: 5px; font-weight: 600; }
+        .desc-text { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 30px; }
+        .input-group { text-align: left; margin-bottom: 20px; }
+        .input-group label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 14px 18px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            color: var(--text-light);
+            font-size: 0.95rem;
+            transition: 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-gold);
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+        }
+
+        .upload-area {
+            position: relative;
+            border: 1px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            padding: 25px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.3s;
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .upload-area:hover {
+            border-color: var(--accent-gold);
+            background: rgba(212, 175, 55, 0.05);
+        }
+
+        .upload-area input[type="file"] {
+            position: absolute; width: 100%; height: 100%; top: 0; left: 0; opacity: 0; cursor: pointer;
+        }
+
+        .upload-icon { font-size: 1.8rem; margin-bottom: 8px; color: var(--text-muted); }
+        .file-name-txt { font-size: 0.8rem; color: var(--accent-gold); margin-top: 10px; font-weight: 600; }
+
+        .btn-gold {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, var(--accent-gold), #B5952F);
+            border: none;
+            border-radius: 12px;
+            color: #111;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 20px rgba(212, 175, 55, 0.3);
+            margin-top: 15px;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-gold:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(212, 175, 55, 0.5); }
+
+        /* ================= DASHBOARD SECTION ================= */
+        #dashboard-section { display: none; padding: 40px 8%; flex-grow: 1; }
+        .page-header { text-align: center; margin-bottom: 50px; }
+        .page-header h1 { font-size: 2.2rem; margin-bottom: 10px; }
+        .page-header p { color: var(--text-muted); font-size: 0.95rem; }
+
+        .candidates-wrapper {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 40px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .candidate-card {
+            background: var(--card-glass);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 30px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .candidate-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(212, 175, 55, 0.4);
+        }
+
+        .img-container {
+            width: 180px;
+            height: 180px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            padding: 5px;
+            background: linear-gradient(135deg, var(--accent-gold), transparent);
+        }
+
+        .candidate-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 4px solid var(--bg-gradient-1);
+        }
+
+        .badge-no {
+            display: inline-block;
+            background: rgba(212, 175, 55, 0.15);
+            color: var(--accent-gold);
+            padding: 5px 15px;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+        }
+
+        .candidate-name { font-size: 1.5rem; margin-bottom: 25px; }
+        .stats-area { text-align: left; margin-bottom: 25px; }
+        .stats-header { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; }
+        
+        .progress-track { background: rgba(0, 0, 0, 0.4); height: 8px; border-radius: 10px; overflow: hidden; }
+        .progress-fill { 
+            height: 100%; 
+            background: linear-gradient(90deg, #B5952F, var(--accent-gold)); 
+            width: 0%; 
+            transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1); 
+            border-radius: 10px;
+        }
+
+        .vote-count { font-size: 0.75rem; color: #718096; margin-top: 8px; }
+
+        .btn-outline {
+            width: 100%;
+            padding: 12px;
+            background: transparent;
+            border: 1px solid var(--accent-gold);
+            color: var(--accent-gold);
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn-outline:hover:not(:disabled) {
+            background: var(--accent-gold);
+            color: #111;
+        }
+
+        .btn-outline:disabled {
+            border-color: rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.3);
+            cursor: not-allowed;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .success-badge {
+            color: var(--success-color);
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 15px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="glow-circle circle-1"></div>
+    <div class="glow-circle circle-2"></div>
+
+    <nav id="main-nav">
+        <div class="nav-brand">
+            <img src="logo.png" alt="Logo Kampus" onerror="this.style.display='none'">
+            <div>
+                <div class="nav-title">E-VOTING PRESMA</div>
+                <div class="nav-subtitle">INSTITUT TEKNOLOGI PLN</div>
+            </div>
+        </div>
+        <div class="user-status">
+            <div id="user-nim-display">NIM: ---</div>
+            <div class="wallet-badge" id="wallet-status">● Web3 Disconnected</div>
+        </div>
+    </nav>
+
+    <section id="login-section">
+        <div class="elegant-card">
+            <img src="logo.png" alt="Logo ITPLN" class="login-logo" onerror="this.style.display='none'">
+            <h2>Verifikasi Identitas</h2>
+            <p class="desc-text">Gunakan NIM dan KTM untuk akses pemilihan</p>
+
+            <form id="auth-form">
+                <div class="input-group">
+                    <label>Nomor Induk Mahasiswa (NIM)</label>
+                    <input type="text" id="nim-input" placeholder="Masukkan NIM Anda" required autocomplete="off">
+                </div>
+
+                <div class="input-group">
+                    <label>Kartu Tanda Mahasiswa (KTM)</label>
+                    <div class="upload-area">
+                        <input type="file" id="ktm-upload" accept="image/*" required onchange="showFileName(this)">
+                        <div class="upload-icon">📄</div>
+                        <div style="font-size: 0.85rem; color: #A0AEC0;">Klik atau tarik file foto ke sini</div>
+                        <div class="file-name-txt" id="file-label"></div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-gold">HUBUNGKAN METAMASK & LANJUTKAN</button>
+            </form>
+        </div>
+    </section>
+
+    <section id="dashboard-section">
+        <div class="page-header">
+            <h1>Pemilihan Presiden Mahasiswa</h1>
+            <p>Sistem ini dijamin oleh smart contract immutable pada jaringan Ethereum Sepolia.</p>
+        </div>
+
+        <div class="candidates-wrapper">
+            <div class="candidate-card">
+                <div class="badge-no">KANDIDAT 01</div>
+                <div class="img-container">
+                    <img src="roky.jpeg" alt="Kandidat 1" class="candidate-img" onerror="this.src='https://via.placeholder.com/200/1C2541/D4AF37?text=Foto+Roky'">
+                </div>
+                <h2 class="candidate-name" id="label-nama-p1">Memuat Paslon 1...</h2>
+                
+                <div class="stats-area">
+                    <div class="stats-header">
+                        <span>Perolehan Suara</span>
+                        <span id="percent-0" style="color: var(--text-light);">0%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill" id="bar-0"></div>
+                    </div>
+                    <div class="vote-count">Total: <span id="count-0">0</span> Suara</div>
+                </div>
+
+                <button class="btn-outline vote-btn" id="btn-vote-0" onclick="submitVoteReal(0)">BERIKAN SUARA</button>
+                <div class="success-badge" id="msg-0">✔ SUARA TERCATAT DI BLOCKCHAIN</div>
+            </div>
+
+            <div class="candidate-card">
+                <div class="badge-no">KANDIDAT 02</div>
+                <div class="img-container">
+                    <img src="silfester.webp" alt="Kandidat 2" class="candidate-img" onerror="this.src='https://via.placeholder.com/200/1C2541/D4AF37?text=Foto+Silfester'">
+                </div>
+                <h2 class="candidate-name" id="label-nama-p2">Memuat Paslon 2...</h2>
+                
+                <div class="stats-area">
+                    <div class="stats-header">
+                        <span>Perolehan Suara</span>
+                        <span id="percent-1" style="color: var(--text-light);">0%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill" id="bar-1"></div>
+                    </div>
+                    <div class="vote-count">Total: <span id="count-1">0</span> Suara</div>
+                </div>
+
+                <button class="btn-outline vote-btn" id="btn-vote-1" onclick="submitVoteReal(1)">BERIKAN SUARA</button>
+                <div class="success-badge" id="msg-1">✔ SUARA TERCATAT DI BLOCKCHAIN</div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        const contractAddress = "0x6c12400E9BcF0F80f1a9fc8174D88c21Db5F316A";
+        
+        // PERBAIKAN: Menggunakan standar JSON ABI penuh untuk menjamin Ethers.js memproses tanpa error
+        const contractABI = [
+            { "inputs": [], "name": "berhentikanPemilu", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+            { "inputs": [ { "internalType": "bytes32", "name": "_hashNIM", "type": "bytes32" }, { "internalType": "uint256", "name": "_idKandidat", "type": "uint256" } ], "name": "berikanSuara", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+            { "inputs": [], "name": "lanjutkanPemilu", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+            { "inputs": [], "name": "mengulangPemilu", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+            { "inputs": [], "name": "mulaiPemilu", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+            { "inputs": [], "stateMutability": "nonpayable", "type": "constructor" },
+            { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "bytes32", "name": "hashNIM", "type": "bytes32" } ], "name": "PemilihDiverifikasi", "type": "event" },
+            { "anonymous": false, "inputs": [ { "indexed": false, "internalType": "enum PemiluPresMa.StatusPemilu", "name": "statusBaru", "type": "uint8" } ], "name": "StatusBerubah", "type": "event" },
+            { "anonymous": false, "inputs": [ { "indexed": true, "internalType": "bytes32", "name": "hashTransaksi", "type": "bytes32" }, { "indexed": false, "internalType": "uint256", "name": "idKandidat", "type": "uint256" } ], "name": "SuaraMasuk", "type": "event" },
+            { "inputs": [], "name": "sudahiPemilu", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+            { "inputs": [ { "internalType": "string", "name": "_nama", "type": "string" } ], "name": "tambahKandidat", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+            { "inputs": [ { "internalType": "bytes32", "name": "_hashNIM", "type": "bytes32" } ], "name": "verifikasiPemilih", "outputs": [], "stateMutability": "nonpayable", "type": "function" },
+            { "inputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ], "name": "daftarKandidat", "outputs": [ { "internalType": "uint256", "name": "id", "type": "uint256" }, { "internalType": "string", "name": "nama", "type": "string" }, { "internalType": "uint256", "name": "jumlahSuara", "type": "uint256" } ], "stateMutability": "view", "type": "function" },
+            { "inputs": [], "name": "dapatkanTotalRiwayat", "outputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ], "stateMutability": "view", "type": "function" },
+            { "inputs": [], "name": "ketuaKPU", "outputs": [ { "internalType": "address", "name": "", "type": "address" } ], "stateMutability": "view", "type": "function" },
+            { "inputs": [ { "internalType": "bytes32", "name": "", "type": "bytes32" } ], "name": "nimSudahMemilih", "outputs": [ { "internalType": "bool", "name": "", "type": "bool" } ], "stateMutability": "view", "type": "function" },
+            { "inputs": [ { "internalType": "bytes32", "name": "", "type": "bytes32" } ], "name": "nimTerverifikasi", "outputs": [ { "internalType": "bool", "name": "", "type": "bool" } ], "stateMutability": "view", "type": "function" },
+            { "inputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ], "name": "riwayatPemilu", "outputs": [ { "internalType": "bytes32", "name": "hashTransaksi", "type": "bytes32" }, { "internalType": "uint256", "name": "idKandidat", "type": "uint256" }, { "internalType": "uint256", "name": "timestamp", "type": "uint256" } ], "stateMutability": "view", "type": "function" },
+            { "inputs": [], "name": "statusSaatIni", "outputs": [ { "internalType": "enum PemiluPresMa.StatusPemilu", "name": "", "type": "uint8" } ], "stateMutability": "view", "type": "function" },
+            { "inputs": [], "name": "totalKandidat", "outputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ], "stateMutability": "view", "type": "function" },
+            { "inputs": [ { "internalType": "address", "name": "", "type": "address" } ], "name": "walletSudahMemilih", "outputs": [ { "internalType": "bool", "name": "", "type": "bool" } ], "stateMutability": "view", "type": "function" }
+        ];
+
+        let provider, signer, contract, userAddress, hashedNIM;
+        let votesCandidate1 = 0;
+        let votesCandidate2 = 0;
+
+        function showFileName(input) {
+            const label = document.getElementById('file-label');
+            if (input.files && input.files[0]) {
+                label.innerText = "File terpilih: " + input.files[0].name;
+            }
+        }
+
+        document.getElementById('auth-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const nim = document.getElementById('nim-input').value.trim();
+            
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    // Ciptakan hash langsung dari NIM
+                    hashedNIM = ethers.solidityPackedKeccak256(["string"], [nim]);
+
+                    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    userAddress = accounts[0]; 
+                    
+                    provider = new ethers.BrowserProvider(window.ethereum);
+                    signer = await provider.getSigner(userAddress); 
+                    contract = new ethers.Contract(contractAddress, contractABI, signer);
+
+                    // VALIDASI WHITELIST NIM
+                    const isVerified = await contract.nimTerverifikasi(hashedNIM);
+                    if (!isVerified) {
+                        let pendingDPT = JSON.parse(localStorage.getItem('pendingDPT') || '[]');
+                        const sudahAda = pendingDPT.some(item => item.nim === nim);
+
+                        if (!sudahAda) {
+                            const namaMhs = prompt("NIM Anda belum terdaftar di Whitelist. Masukkan Nama Lengkap Anda untuk mengajukan verifikasi ke KPU Kampus:") || "Mahasiswa ITPLN";
+                            const fileKTM = document.getElementById('ktm-upload').files[0]?.name || "KTM_Berkas.jpg";
+                            
+                            pendingDPT.push({
+                                nim: nim,
+                                nama: namaMhs,
+                                ktm: fileKTM,
+                                waktu: new Date().toLocaleTimeString('id-ID') + " WIB"
+                            });
+                            
+                            localStorage.setItem('pendingDPT', JSON.stringify(pendingDPT));
+                            alert("Berkas pendaftaran DPT berhasil dikirim ke Admin KPU secara real-time! Harap tunggu Panitia melakukan Approve berkas Anda.");
+                        } else {
+                            alert("Berkas Anda sudah berada di dalam antrean verifikasi KPU Kampus. Mohon tunggu panitia memberikan persetujuan.");
+                        }
+                        return;
+                    }
+
+                    document.getElementById('user-nim-display').innerText = "NIM: " + nim + " | " + userAddress.substring(0,6) + "..." + userAddress.substring(38);
+                    const walletBadge = document.getElementById('wallet-status');
+                    walletBadge.innerText = "● Web3 Connected";
+                    walletBadge.style.color = "var(--success-color)";
+                    walletBadge.style.borderColor = "var(--success-color)";
+
+                    document.getElementById('login-section').style.display = 'none';
+                    document.getElementById('main-nav').style.display = 'flex';
+                    document.getElementById('dashboard-section').style.display = 'block';
+
+                    await checkVoterStatus();
+                    await fetchRealData();
+
+                } catch (error) {
+                    alert("Koneksi Dompet Gagal: " + error.message);
+                }
+            } else {
+                alert("Mohon pasang ekstensi MetaMask di browser Anda untuk masuk!");
+            }
+        });
+
+        async function checkVoterStatus() {
+            try {
+                const hasVoted = await contract.walletSudahMemilih(userAddress);
+                if (hasVoted) {
+                    document.querySelectorAll('.vote-btn').forEach(btn => {
+                        btn.disabled = true;
+                        btn.innerText = "HAK SUARA SUDAH DIGUNAKAN";
+                    });
+                }
+            } catch (e) {
+                console.error("Error cek status pemilih:", e);
+            }
+        }
+
+        async function fetchRealData() {
+            try {
+                // Tambahkan validasi total kandidat agar tidak error saat kontrak kosong
+                const totalKand = await contract.totalKandidat();
+                
+                if(totalKand >= 1) {
+                    const p1 = await contract.daftarKandidat(1); 
+                    document.getElementById('label-nama-p1').innerText = p1.nama || "01. Roky";
+                    votesCandidate1 = Number(p1.jumlahSuara || 0);
+                }
+                
+                if(totalKand >= 2) {
+                    const p2 = await contract.daftarKandidat(2); 
+                    document.getElementById('label-nama-p2').innerText = p2.nama || "02. Silfester";
+                    votesCandidate2 = Number(p2.jumlahSuara || 0);
+                }
+                
+                const totalHitung = votesCandidate1 + votesCandidate2;
+                const percentage1 = totalHitung === 0 ? 0 : ((votesCandidate1 / totalHitung) * 100).toFixed(1);
+                const percentage2 = totalHitung === 0 ? 0 : ((votesCandidate2 / totalHitung) * 100).toFixed(1);
+
+                document.getElementById('count-0').innerText = votesCandidate1.toLocaleString();
+                document.getElementById('count-1').innerText = votesCandidate2.toLocaleString();
+                document.getElementById('percent-0').innerText = percentage1 + "%";
+                document.getElementById('percent-1').innerText = percentage2 + "%";
+
+                setTimeout(() => {
+                    document.getElementById('bar-0').style.width = percentage1 + "%";
+                    document.getElementById('bar-1').style.width = percentage2 + "%";
+                }, 100);
+
+            } catch(e) {
+                console.log("Gagal membaca hasil dari blockchain Sepolia:", e);
+            }
+        }
+
+        async function submitVoteReal(elementId) {
+            const namaKandidat = elementId === 0 ? document.getElementById('label-nama-p1').innerText : document.getElementById('label-nama-p2').innerText;
+            const konfirmasi = confirm(`Apakah Anda yakin ingin memberikan suara kepada "${namaKandidat}"?`);
+        
+            if(konfirmasi) {
+                try {
+                    if (!hashedNIM) return alert("NIM belum diverifikasi di sesi ini! Harap muat ulang halaman.");
+
+                    const btn = document.getElementById('btn-vote-' + elementId);
+                    btn.innerText = "⏳ MEMPROSES BLOK...";
+                    btn.disabled = true;
+
+                    const contractKandidatId = elementId + 1; 
+
+                    // Parameter diperbaiki: hashNIM dikirim
+                    const tx = await contract.berikanSuara(hashedNIM, contractKandidatId);
+                    
+                    alert("Transaksi Pemilu dikirim. Harap tunggu konfirmasi...");
+                    await tx.wait(); 
+                    
+                    await fetchRealData(); 
+                    document.querySelectorAll('.vote-btn').forEach(b => {
+                        b.disabled = true;
+                        b.innerText = "HAK SUARA SUDAH DIGUNAKAN";
+                    });
+                    
+                    document.getElementById('msg-' + elementId).style.display = 'block';
+                    alert("Hak suara Anda berhasil dicatat!");
+
+                } catch (error) {
+                    document.getElementById('btn-vote-' + elementId).innerText = "BERIKAN SUARA";
+                    document.getElementById('btn-vote-' + elementId).disabled = false;
+                    alert("Transaksi Gagal: " + (error.reason || error.message));
+                }
+            }
+        }
+    </script>
+</body>
+</html>
